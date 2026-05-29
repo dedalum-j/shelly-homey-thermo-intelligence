@@ -1,34 +1,28 @@
 // ============================================================================
-// CONTROL TERMO 100L v7.2 - CERVELL COMPLET (SENSE RETALLADES)
-// Clima, Deep Setback, Histèresi, IA Patrons, Facturació Dinàmica, Vacances, 
-// Caixa Negra, Temporitzador Urgent i NOU: SAFE-MODE D'EMERGÈNCIA BIDIRECCIONAL
+// THERMO 100L CONTROLLER v7.2 - FULL BRAIN (ENGLISH EDITION)
+// Climate, Deep Setback, Hysteresis, AI Habits, Dynamic Billing, Holidays, 
+// Black Box, Urgent Timer and BIDIRECTIONAL EMERGENCY SAFE-MODE
+// Orchestrated by Homey Pro Mini | Shelly 2PM (3-Gears) | Shelly EM
 // ============================================================================
 
 const ENABLE_LOGS = true;
 const ENABLE_NOTIFICATIONS = true;
-
 const TIMEZONE_NAME = 'Europe/Madrid'; 
 
 function getTimezoneOffset() {
   const now = new Date();
   const year = now.getUTCFullYear();
-  
   const marchLastSunday = new Date(Date.UTC(year, 2, 31));
   marchLastSunday.setUTCDate(31 - ((marchLastSunday.getUTCDay() + 6) % 7));
   marchLastSunday.setUTCHours(1, 0, 0, 0); 
-  
   const octoberLastSunday = new Date(Date.UTC(year, 9, 31));
   octoberLastSunday.setUTCDate(31 - ((octoberLastSunday.getUTCDay() + 6) % 7));
   octoberLastSunday.setUTCHours(1, 0, 0, 0); 
-  
-  if (now >= marchLastSunday && now < octoberLastSunday) {
-      return 120; 
-  } else {
-      return 60; 
-  }
+  if (now >= marchLastSunday && now < octoberLastSunday) return 120; 
+  else return 60; 
 }
 
-// 1. CONFIGURACIÓ DE DISPOSITIUS
+// 1. DEVICE NAMES (Keep these matched to your Homey devices)
 const DEVICE_800W_NAME = 'Shelly 2PM Gen3 800w';
 const DEVICE_1200W_NAME = 'Shelly 2PM Gen3 1200w';
 const DEVICE_SHELLY_EM_NAME = '1 - Consum total';
@@ -36,7 +30,7 @@ const DEVICE_NETATMO_NAME = 'Sensor netatmo exterior';
 const DEVICE_VIRTUAL_REMOTE = 'Comandament Termo';
 const DEVICE_VACANCES = 'Vacances';
 
-// 2. NOMS DE LES VARIABLES LÒGIQUES DE HOMEY
+// 2. HOMEY LOGIC VARIABLES
 const LOGIC_DUTXA_URGENT_NAME = 'DutxaUrgent';
 const LOGIC_TEMP_TERMO_NAME = 'TempTermo';
 const LOGIC_TEMP_OBJECTIU_NAME = 'TempObjectiu';
@@ -57,7 +51,7 @@ const LOGIC_AVARIA_1200W = 'Termo_Avaria_1200W';
 const LOGIC_HISTORIC_JSON = 'Termo_Historic_JSON';
 const LOGIC_TEMP_INICI_CICLE = 'Termo_TempInici_Cicle';
 
-// VARIABLES INTEL·LIGENTS
+// SMART VARIABLES
 const LOGIC_LAST_TEMP = 'Termo_Last_Temp';
 const LOGIC_PATRONS_USO_JSON = 'Termo_Patrons_USO';
 const LOGIC_LOG_CONSUMO = 'Termo_Log_Consumo'; 
@@ -67,11 +61,11 @@ const LOGIC_DEBUG_LOG = 'Termo_Debug_Log';
 
 const DURADA_FINESTRA_CONFORT_MIN = 120; 
 
-// UMBRALS DE CLIMA
+// CLIMATE THRESHOLDS
 const TEMP_EXT_FRED = 12; 
 const TEMP_EXT_MITJA = 22;
 
-// CONSIGNES DE TEMPERATURA
+// TEMPERATURE TARGETS
 const TEMP_BASE_FRED = 38; 
 const TEMP_CONFORT_FRED = 54; 
 const TEMP_MIN_FRED = 32;
@@ -108,10 +102,7 @@ const MINUTS_FALLBACK = 90;
 const POWER_LIMIT_SOFT = 5300;
 const POWER_LIMIT_HARD = 5600;
 
-function log(msg) { 
-    if (ENABLE_LOGS) console.log('[TERMO v7.2] ' + msg); 
-}
-
+function log(msg) { if (ENABLE_LOGS) console.log('[THERMO v7.2] ' + msg); }
 function toMinutes(h, m) { return h * 60 + m; }
 
 function getCurrentTime() {
@@ -157,7 +148,7 @@ async function updateLogicIfChanged(variableObj, newValue) {
 
 function getVariable(vars, name, required = true) {
   const varObj = Object.values(vars).find(v => v.name === name);
-  if (!varObj && required) throw new Error(`Variable no trobada: ${name}`);
+  if (!varObj && required) throw new Error(`Variable not found: ${name}`);
   return varObj;
 }
 
@@ -168,7 +159,7 @@ async function forceRelayState(dev, desiredOn) {
 
 async function sendNotification(msg) {
   if (!ENABLE_NOTIFICATIONS) return;
-  try { await Homey.notifications.createNotification({ excerpt: '🌡️ Termo: ' + msg }); } catch (e) {}
+  try { await Homey.notifications.createNotification({ excerpt: '🌡️ Thermo: ' + msg }); } catch (e) {}
 }
 
 async function llegirHistoric(vars) {
@@ -205,17 +196,17 @@ async function gravarCicle(vars, tempInicio, tempExt, potencia, minutosReales) {
 }
 
 // ============================================================================
-// LÒGICA PRINCIPAL
+// MAIN LOGIC
 // ============================================================================
 async function main() {
   const now = getCurrentTime();
   const timestampNow = now.getTime();
-  log(`=== Execució ${formatDate(now)} ===`);
+  log(`=== Execution ${formatDate(now)} ===`);
 
   const devices = await Homey.devices.getDevices();
   const findDevice = (n, opt=false) => { 
       const d = Object.values(devices).find(x => x.name === n); 
-      if (!d && !opt) throw new Error('No hi ha dispositiu: '+n); 
+      if (!d && !opt) throw new Error('Device not found: '+n); 
       return d; 
   };
 
@@ -276,7 +267,7 @@ async function main() {
   const currentHeaterPower = (is800On ? 800 : 0) + (is1200On ? 1200 : 0);
   const baseLoad = Math.max(0, powerTotalRaw - currentHeaterPower);
 
-  // CAIXA NEGRA & FACTURA DINÀMICA
+  // BLACK BOX & DYNAMIC BILLING
   let elapsedMs = 60000; 
   if (varDebugLog) {
       let debugHistory = [];
@@ -293,7 +284,7 @@ async function main() {
   }
 
   // ==========================================================================
-  // SAFE-MODE: L'APP WEB CONTINUA VIVA TOT I LES EMERGÈNCIES
+  // SAFE-MODE: BIDIRECTIONAL EMERGENCY
   // ==========================================================================
   const fallbackResponse = (safeModeName, currentTemp) => {
       return {
@@ -305,31 +296,31 @@ async function main() {
       };
   };
 
-  // 1. Validació del Sensor (Evita que l'aigua bulli si hi ha un Null)
+  // 1. Probe Validation (Prevent boiling if sensor is Null)
   if (tempTermoRaw === null || tempTermoRaw === undefined || isNaN(tempTermoRaw) || tempTermoRaw <= 0 || tempTermoRaw > 110) {
       await forceRelayState(dev800, false); await forceRelayState(dev1200, false);
-      await updateLogicIfChanged(varModeTermo, 'SENSOR_CORRUPTE');
-      return fallbackResponse('SENSOR_CORRUPTE', 0);
+      await updateLogicIfChanged(varModeTermo, 'CORRUPT_SENSOR');
+      return fallbackResponse('CORRUPT_SENSOR', 0);
   }
   
   const tempTermo = Number(tempTermoRaw);
 
-  // 2. Parada Manual des de la Web
+  // 2. Web Manual Stop
   if (varParadaEmergencia.value === true) {
     await forceRelayState(dev800, false); await forceRelayState(dev1200, false);
-    await updateLogicIfChanged(varModeTermo, 'PARADA_EMERGENCIA');
-    return fallbackResponse('PARADA_EMERGENCIA', tempTermo);
+    await updateLogicIfChanged(varModeTermo, 'EMERGENCY_STOP');
+    return fallbackResponse('EMERGENCY_STOP', tempTermo);
   }
   
-  // 3. Sobreescalfament de Seguretat Crítica
+  // 3. Critical Overheat
   if (tempTermo >= TEMP_MAX_SEGURETAT) {
     await forceRelayState(dev800, false); await forceRelayState(dev1200, false);
-    await sendNotification(`🔥 ALERTA MÀXIMA: L'aigua ha arribat a ${tempTermo}ºC, superant el límit de seguretat. Sistema bloquejat.`);
-    await updateLogicIfChanged(varModeTermo, 'SOBREESCALFAMENT');
-    return fallbackResponse('SOBREESCALFAMENT', tempTermo);
+    await sendNotification(`🔥 MAXIMUM ALERT: Water reached ${tempTermo}ºC, exceeding safety limits. System locked.`);
+    await updateLogicIfChanged(varModeTermo, 'OVERHEATING');
+    return fallbackResponse('OVERHEATING', tempTermo);
   }
 
-  // LÒGICA ESTÀNDARD A PARTIR D'AQUÍ
+  // STANDARD LOGIC FROM HERE
   let modoAusencia = varModoAusencia.value === true;
   if (devVacances) {
     const btnVacances = devVacances.capabilitiesObj.onoff?.value;
@@ -340,7 +331,7 @@ async function main() {
   let modoActual = 'ECO';
   let targetTemp = calculaConsignes(tempExt).T_base;
 
-  // VACANCES (CALENDARI I XOC SANITARI)
+  // HOLIDAYS
   let vacData = { inici: null, fi: null };
   if (varVacances && varVacances.value !== '') { try { vacData = JSON.parse(varVacances.value); } catch(e){} }
 
@@ -352,23 +343,23 @@ async function main() {
       const tPreheatRetorn = tTornem - (minutsPreheatVac * 60000);
 
       if (timestampNow >= tMarxem && timestampNow < tPreheatRetorn) {
-          modoActual = 'VACANCES'; targetTemp = TEMP_ANTIGEL; await updateLogicIfChanged(varModoAusencia, true);
+          modoActual = 'HOLIDAY'; targetTemp = TEMP_ANTIGEL; await updateLogicIfChanged(varModoAusencia, true);
       } else if (timestampNow >= tPreheatRetorn && timestampNow < tTornem) {
-          modoActual = 'RETORN_VACANCES'; targetTemp = TEMP_ANTILEGIONELLA; await updateLogicIfChanged(varModoAusencia, false);
+          modoActual = 'HOLIDAY_RETURN'; targetTemp = TEMP_ANTILEGIONELLA; await updateLogicIfChanged(varModoAusencia, false);
       } else if (timestampNow >= tTornem) {
           await updateLogicIfChanged(varVacances, ''); await updateLogicIfChanged(varModoAusencia, false); vacData = { inici: null, fi: null };
       }
   }
 
-  if (modoAusencia && modoActual !== 'VACANCES' && modoActual !== 'RETORN_VACANCES') {
-      modoActual = 'ABSENCIA'; targetTemp = TEMP_ANTIGEL;
+  if (modoAusencia && modoActual !== 'HOLIDAY' && modoActual !== 'HOLIDAY_RETURN') {
+      modoActual = 'ABSENCE'; targetTemp = TEMP_ANTIGEL;
   }
 
   let enVentanaConfort = false, enPrecalentament = false, enMicroConfortApres = false, enAntiLegionella = false;
   let dutxaUrgent = varDutxaUrgent.value === true;
   let pData = { hist: [], rutines: [] };
 
-  if (modoActual !== 'VACANCES' && modoActual !== 'RETORN_VACANCES' && modoActual !== 'ABSENCIA') {
+  if (modoActual !== 'HOLIDAY' && modoActual !== 'HOLIDAY_RETURN' && modoActual !== 'ABSENCE') {
       
       let horarisActius = [];
       if (varHoraris && varHoraris.value !== '') { try { horarisActius = JSON.parse(varHoraris.value); } catch(e){} }
@@ -386,6 +377,7 @@ async function main() {
           }
       }
 
+      // MACHINE LEARNING FOR HABITS
       if (varLastTemp && varPatrons && tempTermo > 0) {
         let lastT = parseFloat(varLastTemp.value);
         try { pData = JSON.parse(varPatrons.value || '{"hist":[],"rutines":[]}'); } catch(e){}
@@ -429,7 +421,7 @@ async function main() {
     else if (!btnState && dutxaUrgent) { dutxaUrgent = false; await updateLogicIfChanged(varDutxaUrgent, false); }
   }
 
-  // DIAGNÒSTIC D'AVARIES FÍSIQUES ALS RELÉS
+  // PHYSICAL RELAY DIAGNOSTICS
   let avaria800 = varAvaria800 ? varAvaria800.value === true : false;
   let avaria1200 = varAvaria1200 ? varAvaria1200.value === true : false;
 
@@ -443,7 +435,7 @@ async function main() {
         if (minutsEncesa >= MINUTS_FALLO_CONFIRMAT && pwr < 20 && !esAvariaReal) {
             esAvariaReal = true; if (varAvaria) await updateLogicIfChanged(varAvaria, true); 
             await forceRelayState(devObj, false); await updateLogicIfChanged(varEncesa, ''); 
-            await sendNotification(`⚠️ Avaria detectada a la resistència de ${nomResist}. Apagada per seguretat.`);
+            await sendNotification(`⚠️ Malfunction detected in ${nomResist} element. Disabled for safety.`);
         }
       }
     }
@@ -453,29 +445,29 @@ async function main() {
   avaria800 = await verifRelay(varR800EncesaDes, power800, is800On, avaria800, varAvaria800, dev800, "800W");
   avaria1200 = await verifRelay(varR1200EncesaDes, power1200, is1200On, avaria1200, varAvaria1200, dev1200, "1200W");
 
-  // 4. Avaria Total Física
+  // 4. Total Failure
   if (avaria800 && avaria1200) {
     await forceRelayState(dev800, false); await forceRelayState(dev1200, false);
-    await updateLogicIfChanged(varModeTermo, 'AVARIA_TOTAL');
-    return fallbackResponse('AVARIA_TOTAL', tempTermo);
+    await updateLogicIfChanged(varModeTermo, 'TOTAL_FAILURE');
+    return fallbackResponse('TOTAL_FAILURE', tempTermo);
   }
 
-  if (modoActual !== 'VACANCES' && modoActual !== 'RETORN_VACANCES' && modoActual !== 'ABSENCIA') {
+  if (modoActual !== 'HOLIDAY' && modoActual !== 'HOLIDAY_RETURN' && modoActual !== 'ABSENCE') {
       if (enAntiLegionella) modoActual = 'ANTI_LEGIONELLA';
-      else if (dutxaUrgent) modoActual = 'DUTXA_URGENT';
-      else if (enPrecalentament) modoActual = 'PRECALENTAMENT';
-      else if (enVentanaConfort) modoActual = 'CONFORT';
-      else if (enMicroConfortApres) modoActual = 'IA_MICRO_CONFORT';
+      else if (dutxaUrgent) modoActual = 'URGENT_SHOWER';
+      else if (enPrecalentament) modoActual = 'PREHEATING';
+      else if (enVentanaConfort) modoActual = 'COMFORT';
+      else if (enMicroConfortApres) modoActual = 'AI_MICRO_COMFORT';
 
       if (enAntiLegionella) targetTemp = TEMP_ANTILEGIONELLA;
       else if (dutxaUrgent) targetTemp = TEMP_DUTXA_URGENT; 
       else if (enPrecalentament || enVentanaConfort) targetTemp = calculaConsignes(tempExt).T_confort;
       else if (enMicroConfortApres) targetTemp = TEMP_MICRO_CONFORT;
-      else if (tempTermo < calculaConsignes(tempExt).T_min) { targetTemp = calculaConsignes(tempExt).T_base; modoActual = 'RECUPERACIO_BASE'; }
+      else if (tempTermo < calculaConsignes(tempExt).T_min) { targetTemp = calculaConsignes(tempExt).T_base; modoActual = 'BASE_RECOVERY'; }
   }
 
   let currentHysteresis = HYSTERESIS_CONFORT;
-  if (modoActual === 'ECO' || modoActual === 'RECUPERACIO_BASE' || modoActual === 'ABSENCIA' || modoActual === 'VACANCES') {
+  if (modoActual === 'ECO' || modoActual === 'BASE_RECOVERY' || modoActual === 'ABSENCE' || modoActual === 'HOLIDAY') {
       currentHysteresis = HYSTERESIS_ECO;
   }
   
@@ -488,7 +480,7 @@ async function main() {
     if (devRemote) await devRemote.setCapabilityValue('onoff', false);
   }
   
-  if ((enAntiLegionella || modoActual === 'RETORN_VACANCES') && !wantHeat && tempTermo >= (TEMP_ANTILEGIONELLA - currentHysteresis)) {
+  if ((enAntiLegionella || modoActual === 'HOLIDAY_RETURN') && !wantHeat && tempTermo >= (TEMP_ANTILEGIONELLA - currentHysteresis)) {
       const varUltimLegio = getVariable(vars, LOGIC_ULTIM_LEGIONELLA_NAME, false);
       if (varUltimLegio) await updateLogicIfChanged(varUltimLegio, new Date().toISOString());
   }
@@ -499,19 +491,24 @@ async function main() {
       await updateLogicIfChanged(varTempInici, 0);
   }
 
+  // ---------------------------------------------------------
+  // 3-GEAR SMART LOAD SHEDDING (800W / 1200W / 2000W Combined)
+  // ---------------------------------------------------------
   let on800 = false, on1200 = false, potenciaNecesaria = 0, bloqueigPerConsum = false, bloqueigPerTemps = false;
 
   if (wantHeat) {
     if (varTempInici && varTempInici.value === 0) await updateLogicIfChanged(varTempInici, tempTermo);
     const delta = targetTemp - tempTermo;
     
-    if (dutxaUrgent || enAntiLegionella || modoActual === 'RETORN_VACANCES') potenciaNecesaria = 2000;
+    // Select desired gear based on delta or urgency
+    if (dutxaUrgent || enAntiLegionella || modoActual === 'HOLIDAY_RETURN') potenciaNecesaria = 2000;
     else if (delta >= DELTA_VERY_COLD || enPrecalentament) potenciaNecesaria = 2000;
     else if (delta >= DELTA_COLD) potenciaNecesaria = 1200;
     else potenciaNecesaria = 800;
 
     const canAfford = (w) => (baseLoad + w) <= POWER_LIMIT_SOFT;
     
+    // Dynamic throttling based on Shelly EM
     if (baseLoad + currentHeaterPower >= POWER_LIMIT_HARD) { potenciaNecesaria = 0; bloqueigPerConsum = true; } 
     else if (!canAfford(potenciaNecesaria)) {
       bloqueigPerConsum = true;
@@ -524,7 +521,7 @@ async function main() {
     else if (avaria1200) { if (potenciaNecesaria === 1200 || potenciaNecesaria === 2000) potenciaNecesaria = 800; }
 
     const checkPuedeEncender = (varUltimApagat) => {
-        if (dutxaUrgent || enAntiLegionella || modoActual === 'RETORN_VACANCES') return true; 
+        if (dutxaUrgent || enAntiLegionella || modoActual === 'HOLIDAY_RETURN') return true; 
         return (!varUltimApagat.value || ((timestampNow - varUltimApagat.value) / (1000 * 60)) >= ANTI_SHORT_CYCLE_MIN);
     };
     
@@ -534,13 +531,14 @@ async function main() {
     if (potenciaNecesaria === 800 && !disponible800 && disponible1200) potenciaNecesaria = 1200; 
     else if (potenciaNecesaria === 1200 && !disponible1200 && disponible800) potenciaNecesaria = 800; 
 
+    // Apply gears
     if (potenciaNecesaria >= 2000) { on800 = true; on1200 = true; } 
     else if (potenciaNecesaria >= 1200) on1200 = true; 
     else if (potenciaNecesaria >= 800) on800 = true; 
   }
 
   const checkPuedeEncenderFinal = (varUltimApagat) => {
-      if (dutxaUrgent || enAntiLegionella || modoActual === 'RETORN_VACANCES') return true; 
+      if (dutxaUrgent || enAntiLegionella || modoActual === 'HOLIDAY_RETURN') return true; 
       return (!varUltimApagat.value || ((timestampNow - varUltimApagat.value) / (1000 * 60)) >= ANTI_SHORT_CYCLE_MIN);
   };
   
@@ -585,7 +583,7 @@ async function main() {
   try { if (varHoraris && varHoraris.value !== '') horarisReturn = JSON.parse(varHoraris.value); } catch(e){}
 
   let minutsRestantsUrgent = null;
-  if (modoActual === 'DUTXA_URGENT') {
+  if (modoActual === 'URGENT_SHOWER') {
       if (tempTermo >= TEMP_MIN_DUTXA_USABLE) {
           minutsRestantsUrgent = 0; 
       } else {
@@ -599,7 +597,7 @@ async function main() {
 
   return {
     tempAgua: Math.round(tempTermo * 10) / 10, tempObjectiu: targetTemp, tempExterior: Math.round(tempExt * 10) / 10,
-    mode: modoActual, rutinesAprenentatge: (modoActual === 'IA_MICRO_CONFORT'), consumActual: Math.round(pwrFinal),
+    mode: modoActual, rutinesAprenentatge: (modoActual === 'AI_MICRO_COMFORT'), consumActual: Math.round(pwrFinal),
     resistencia800: { on: on800 }, resistencia1200: { on: on1200 },
     diagnostics: { potencia_calculada_demandada: potenciaNecesaria, bloqueig_per_consum_massa_alt: bloqueigPerConsum, bloqueig_per_temporitzador_5min: bloqueigPerTemps },
     horaris: horarisReturn, rutinesIA: pData.rutines, vacances: vacData, minutsRestantsUrgent: minutsRestantsUrgent
