@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="ca" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Termo 100L - PRO Control AI</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#070d16">
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Termo%20PRO%20AI%22%2C%22short_name%22%3A%22Termo%20PRO%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%233B82F6%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20100%20100%27%253E%253Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2720%27%20fill%3D%27%25233B82F6%27%2F%253E%253Ctext%20x%3D%2750%27%20y%3D%2765%27%20font-size%3D%2750%27%20text-anchor%3D%27middle%27%20fill%3D%27white%27%253E%25E2%259A%25A1%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {} }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        .light body { background-color: #f1f5f9; color: #0f172a; }
+        .dark body { background-color: #070d16; color: #f8fafc; }
+
+        html, body { overflow-x: hidden; }
+        
+        @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; transition: all 0.3s ease-out; }
+        .toggle-checkbox:checked { right: 0; border-color: #3B82F6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3B82F6; }
+        .toggle-checkbox { right: 0; z-index: 1; border-color: #e5e7eb; transition: all 0.3s; }
+        .dark .toggle-checkbox { border-color: #334155; }
+        .toggle-label { width: 3rem; height: 1.5rem; background-color: #e5e7eb; transition: all 0.3s; cursor: pointer; }
+        .dark .toggle-label { background-color: #334155; }
+        
+        .toggle-emergencia:checked { border-color: #EF4444 !important; }
+        .toggle-emergencia:checked + .toggle-label { background-color: #EF4444 !important; }
+        
+        /* Estil per l'interruptor Anti-Legionel·la lila */
+        .toggle-purple:checked { border-color: #A855F7 !important; }
+        .toggle-purple:checked + .toggle-label { background-color: #A855F7 !important; }
+        
+        .hidden-canvas { display: none !important; }
+        
+        .thermostat-bg { background: linear-gradient(145deg, #ffffff, #f8fafc); }
+        .dark .thermostat-bg { background: linear-gradient(145deg, #0c1521, #070d16); }
+
+        /* Unificació estètica mode fosc */
+        html.dark section,
+        html.dark .thermostat-bg {
+          background-color: #0c1521 !important;
+          border-color: rgba(30, 52, 80, 0.65) !important;
+        }
+        html.dark .bg-slate-50,
+        html.dark .dark\:bg-slate-900\/50 { background-color: rgba(10,18,30,.55) !important; }
+        html.dark .border-slate-100,
+        html.dark .dark\:border-slate-700 { border-color: rgba(30,52,80,.55) !important; }
+        html.dark table thead { background-color: rgba(7,13,22,.8) !important; }
+        
+        .glow-blue { box-shadow: 0 0 25px rgba(59, 130, 246, 0.4); }
+        .glow-orange { box-shadow: 0 0 25px rgba(249, 115, 22, 0.4); }
+        .glow-red { box-shadow: 0 0 25px rgba(239, 68, 68, 0.4); }
+        .glow-purple { box-shadow: 0 0 25px rgba(168, 85, 247, 0.4); }
+        .glow-cyan { box-shadow: 0 0 25px rgba(6, 182, 212, 0.4); }
+    </style>
+</head>
+<body class="antialiased">
+    
+    <div id="configModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 border border-slate-200 dark:border-slate-700">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3 text-slate-800 dark:text-white">
+                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400"><i class="fas fa-gears"></i></div>
+                Configuració
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Nom del HomeyScript</label>
+                    <input type="text" id="configScriptName" placeholder="Ex: Control termo 100L V3.0.js" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    <p class="text-[10px] text-slate-400 mt-2">Nom del script que tens creat dins HomeyScript.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">PIN de Seguretat</label>
+                    <input type="password" id="configPin" placeholder="Ex: 2026" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    <p class="text-[10px] text-slate-400 mt-2">PIN definit a Netlify (DASHBOARD_PIN) per protegir l'accés.</p>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button id="saveConfigBtn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-600/30">Desar</button>
+                    <button id="cancelConfigBtn" class="px-6 py-3 text-slate-500 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">Tancar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="horarisModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold flex items-center gap-3 text-slate-800 dark:text-white">
+                    <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400"><i class="far fa-clock"></i></div>
+                    Gestor d'Horaris
+                </h2>
+                <button onclick="document.getElementById('horarisModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="overflow-y-auto pr-2 space-y-3 flex-1 min-h-[200px]" id="horarisEditorList"></div>
+            
+            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <button id="btnAddHorari" class="w-full mb-3 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 font-bold rounded-xl hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i> Afegir nou horari
+                </button>
+                <div class="flex gap-3">
+                    <button id="saveHorarisBtn" class="flex-1 bg-emerald-500 text-white font-bold py-3 rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 transition flex justify-center items-center gap-2">
+                        <i class="fas fa-save"></i> Desar Canvis
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="vacancesModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 border border-slate-200 dark:border-slate-700">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-3 text-slate-800 dark:text-white">
+                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400"><i class="fas fa-plane-departure"></i></div>
+                Programar Vacances
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Data de Sortida (Marxem)</label>
+                    <input type="datetime-local" id="vacInici" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Data de Tornada (Arribem)</label>
+                    <input type="datetime-local" id="vacFi" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition font-medium">
+                </div>
+                
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 italic">El termo s'apagarà durant la teva absència. Unes hores abans de la tornada, farà un cicle de xoc tèrmic Anti-Legionel·la.</p>
+
+                <div class="flex gap-3 pt-2">
+                    <button id="saveVacBtn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-600/30">Activar Calendari</button>
+                    <button onclick="document.getElementById('vacancesModal').classList.add('hidden')" class="px-6 py-3 text-slate-500 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">Tancar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
+        
+        <header class="bg-white dark:bg-[#0c1521] rounded-3xl shadow-sm p-6 mb-6 border border-slate-200 dark:border-[rgba(30,52,80,.65)]">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="min-w-0">
+                    <h1 class="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mb-1 flex items-center gap-3 tracking-tight">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="1.1rem" height="1.35rem" aria-hidden="true">
+                                <rect x="5" y="4" width="14" height="16" rx="7"/>
+                                <rect x="10" y="1" width="4" height="5" rx="2"/>
+                                <rect x="7" y="19" width="3" height="4" rx="1.5"/>
+                                <rect x="14" y="19" width="3" height="4" rx="1.5"/>
+                            </svg>
+                        </div>
+                        <span class="truncate">Termo ACS <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">PRO</span></span>
+                    </h1>
+                    <div class="flex items-center gap-3 text-sm font-medium ml-1 mt-2 md:mt-0 flex-wrap">
+                        <span id="currentTime" class="text-slate-500 dark:text-slate-400 shrink-0 tabular-nums"><i class="far fa-clock"></i> --:--</span>
+                        <span id="connectionStatus" class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/60 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 shrink-0">
+                            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                            <span class="text-slate-500 text-xs uppercase tracking-wider font-bold">Inicialitzant</span>
+                        </span>
+                    </div>
+                    <div class="ml-1 mt-1">
+                        <span id="lastUpdateText" class="text-slate-400 dark:text-slate-500 text-xs tabular-nums">Última lectura: --</span>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-2 md:mt-0 shrink-0 flex-wrap">
+                    <a href="index.html" title="Tornar a l'inici"
+                       class="w-12 h-12 bg-slate-50 dark:bg-[rgba(30,52,80,.3)] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[rgba(30,52,80,.65)] rounded-2xl hover:bg-slate-100 dark:hover:bg-[rgba(30,52,80,.5)] transition flex items-center justify-center text-xl">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <button id="themeToggleBtn" class="w-12 h-12 bg-slate-50 dark:bg-slate-700/60 text-slate-600 dark:text-yellow-400 border border-slate-200 dark:border-slate-600 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-600 transition flex items-center justify-center text-xl">
+                        <i class="fas fa-sun" id="themeIcon"></i>
+                    </button>
+                    <button id="refreshBtn" class="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl hover:bg-blue-100 dark:hover:bg-blue-900/50 transition flex items-center justify-center text-xl">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="configBtn" class="w-12 h-12 bg-slate-50 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-600 transition flex items-center justify-center text-xl">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div id="alarmPanel" class="hidden border rounded-3xl p-5 mb-8 flex items-center gap-4 transition-all duration-500">
+            <div id="alarmIcon" class="w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0"><i class="fas fa-shield"></i></div>
+            <div>
+                <h3 id="alarmTitle" class="font-bold">Verificant...</h3>
+                <p id="alarmText" class="text-sm font-medium mt-1">Sincronitzant estat.</p>
+            </div>
+        </div>
+
+        <section class="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-2 thermostat-bg rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 relative overflow-hidden flex flex-col justify-between">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-blue-50 dark:bg-blue-900/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 transform translate-x-1/2 -translate-y-1/2" id="bgGlow"></div>
+                
+                <div class="flex items-center justify-between mb-4 relative z-10">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                        <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
+                        Temperatura Interior
+                    </h3>
+                    <span id="deltaIndicator" class="text-[10px] font-bold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 uppercase tracking-widest shadow-sm border border-slate-200 dark:border-slate-600">
+                        --
+                    </span>
+                </div>
+                
+                <div class="flex items-end justify-between flex-1 relative z-10 mt-6">
+                    <div>
+                        <div class="flex items-start">
+                            <div id="tempAgua" class="text-8xl sm:text-[7rem] font-black tracking-tighter leading-none text-slate-800 dark:text-white transition-colors duration-500">--</div>
+                            <span class="text-3xl sm:text-4xl font-bold text-slate-400 mt-2">°C</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-6">
+                            <div class="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Objectiu</span>
+                                <span id="tempObjectiu" class="font-black text-slate-800 dark:text-white ml-2">--°C</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right pb-2 hidden sm:block opacity-20 dark:opacity-10">
+                        <i class="fas fa-temperature-half text-[8rem] text-slate-800 dark:text-white"></i>
+                    </div>
+                </div>
+                
+                <div class="mt-8 h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700 relative z-10">
+                    <div id="tempProgress" class="h-full rounded-full transition-all duration-1000 bg-slate-300 dark:bg-slate-600 w-0 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-white/20 w-full h-full" style="background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent); background-size: 1rem 1rem;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 flex flex-col justify-between">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 mr-2"></span>
+                    Estat del Sistema
+                </h3>
+                
+                <div class="space-y-4 flex-1">
+                    <div class="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                        <span class="text-slate-500 dark:text-slate-400 font-semibold text-sm"><i class="fas fa-layer-group text-slate-400 w-5"></i> Mode</span>
+                        <span id="modeActual" class="px-3 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-600 uppercase tracking-wider">--</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                        <div class="flex flex-col">
+                            <span class="text-slate-500 dark:text-slate-400 font-semibold text-sm"><i class="fas fa-bolt text-yellow-500 w-5"></i> Potència</span>
+                            <div class="flex gap-1.5 mt-2 ml-5">
+                                <span id="led-800" class="px-2 py-0.5 text-[9px] font-bold rounded-md bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 transition-all duration-300">800W</span>
+                                <span id="led-1200" class="px-2 py-0.5 text-[9px] font-bold rounded-md bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 transition-all duration-300">1200W</span>
+                            </div>
+                        </div>
+                        <span id="consumActual" class="font-black text-2xl text-slate-800 dark:text-white">-- W</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                        <div class="flex flex-col">
+                            <span class="text-slate-500 dark:text-slate-400 font-semibold text-sm"><i class="fas fa-cloud-sun text-sky-500 w-5"></i> Clima Ext.</span>
+                            <span id="txtTaxaRefredat" class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight ml-6">Pèrdua: -- °C/h</span>
+                        </div>
+                        <span id="tempExterior" class="font-black text-xl text-slate-700 dark:text-slate-300">--°C</span>
+                    </div>
+
+                    <div class="flex flex-col p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800/50 transition">
+                        <span class="text-blue-600 dark:text-blue-400 font-semibold text-sm mb-1"><i class="fas fa-hourglass-half w-5"></i> Pròxima Acció</span>
+                        <span id="txtProximaAccio" class="text-xs font-bold text-slate-700 dark:text-slate-300 ml-5">Calculant...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8 relative overflow-hidden flex flex-col justify-between">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center">
+                <i class="fas fa-stethoscope text-sky-500 mr-2"></i> Diagnòstic Avançat
+            </h3>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col">
+                    <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">Càrrega Base Real</span>
+                    <span id="diagBaseLoadRaw" class="text-lg font-black text-slate-800 dark:text-slate-200">-- W</span>
+                </div>
+                
+                <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col">
+                    <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">Càrrega Base Suavitzada</span>
+                    <span id="diagBaseLoadAvg" class="text-lg font-black text-slate-800 dark:text-slate-200">-- W</span>
+                </div>
+                
+                <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col">
+                    <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">Potència Demandada</span>
+                    <span id="diagPotenciaDemandada" class="text-lg font-black text-slate-800 dark:text-slate-200">-- W</span>
+                </div>
+                
+                <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col">
+                    <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">Bloqueigs Actius</span>
+                    <div class="flex gap-2 mt-1" id="diagBloqueigs">
+                        </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            
+            <section class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 flex flex-col relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 opacity-5 dark:opacity-10">
+                    <i class="fas fa-brain text-9xl text-purple-500"></i>
+                </div>
+                <h2 class="text-xs font-bold text-purple-500 uppercase tracking-widest mb-6 flex items-center z-10">
+                    <i class="fas fa-sparkles mr-2"></i> Intel·ligència Artificial
+                </h2>
+                <div class="flex-1 flex flex-col justify-center z-10">
+                    <div id="iaStatusBox" class="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-800/50 h-full">
+                        <p class="text-sm font-bold text-purple-900 dark:text-purple-300 mb-1">Cervell Predictiu Actiu</p>
+                        <p class="text-xs text-purple-700 dark:text-purple-400/80 mb-4 leading-relaxed">Aprenentatge actiu. Tota nova rutina detectada s'afegirà automàticament a l'Agenda d'Enceses del costat.</p>
+                        
+                        <div class="mt-auto pt-4 border-t border-purple-200/50 dark:border-purple-800/50">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1"><i class="fas fa-shield-virus text-emerald-500"></i> Anti-Legionel·la</p>
+                                    <p id="txtLegionella" class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Últim cicle: Càrrega...</p>
+                                </div>
+                                <div class="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 relative flex flex-col">
+                <button id="btnEditHoraris" class="absolute top-6 right-6 w-10 h-10 bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center justify-center">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center">
+                    <i class="far fa-calendar-check text-blue-500 mr-2"></i> Agenda d'Enceses (Avui)
+                </h2>
+                
+                <div class="space-y-3 flex-1 overflow-y-auto max-h-[180px] pr-2" id="agendaAvuiList">
+                    <div class="text-center text-slate-400 text-sm mt-8 italic">Carregant l'agenda...</div>
+                </div>
+            </section>
+
+            <section class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 flex flex-col justify-between">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center">
+                    <i class="fas fa-sliders-h text-slate-400 dark:text-slate-500 mr-2"></i> Control Manual
+                </h2>
+                <div class="space-y-4 flex-1">
+                    
+                    <div class="flex justify-between items-start p-4 bg-red-50/50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-900/30 transition hover:bg-red-50 dark:hover:bg-red-900/30">
+                        <div>
+                            <p class="font-bold text-slate-800 dark:text-slate-200 flex items-center"><i class="fas fa-fire text-red-500 mr-2"></i> Dutxa Urgent</p>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-tight">Bypass de seguretat a 2000W.</p>
+                            
+                            <div id="urgentTimerBadge" class="hidden mt-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 text-[11px] font-bold rounded-lg border border-orange-200 dark:border-orange-800 w-fit items-center gap-1 transition-all">
+                                <i class="fas fa-stopwatch animate-pulse"></i> <span id="urgentTimerText">Calculant temps...</span>
+                            </div>
+                        </div>
+                        <div class="relative inline-block w-12 align-middle select-none ml-2 shrink-0 mt-1">
+                            <input type="checkbox" id="toggleBoost" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white dark:bg-slate-200 border-4 appearance-none"/>
+                            <label for="toggleBoost" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300"></label>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-start p-4 bg-purple-50/50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-900/30 transition hover:bg-purple-50 dark:hover:bg-purple-900/30">
+                        <div>
+                            <p class="font-bold text-slate-800 dark:text-slate-200 flex items-center"><i class="fas fa-shield-virus text-purple-500 mr-2"></i> Anti-Legionel·la</p>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-tight">Forçar escalfament a 70ºC la propera matinada.</p>
+                        </div>
+                        <div class="relative inline-block w-12 align-middle select-none ml-2 shrink-0 mt-1">
+                            <input type="checkbox" id="toggleLegionella" class="toggle-checkbox toggle-purple absolute block w-6 h-6 rounded-full bg-white dark:bg-slate-200 border-4 appearance-none"/>
+                            <label for="toggleLegionella" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300"></label>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-start p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <div>
+                            <p class="font-bold text-slate-800 dark:text-slate-200 flex items-center"><i class="fas fa-power-off text-slate-500 mr-2"></i> Parada Emergència</p>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-tight">Apaga tots els relés i bloqueja el sistema.</p>
+                        </div>
+                        <div class="relative inline-block w-12 align-middle select-none ml-2 shrink-0 mt-1">
+                            <input type="checkbox" id="toggleEmergencia" class="toggle-checkbox toggle-emergencia absolute block w-6 h-6 rounded-full bg-white dark:bg-slate-200 border-4 appearance-none"/>
+                            <label for="toggleEmergencia" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300"></label>
+                        </div>
+                    </div>
+
+                    <div id="vacancesBox" class="flex flex-col p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-900/30 transition-all">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-bold text-slate-800 dark:text-slate-200 flex items-center"><i class="fas fa-plane text-blue-500 mr-2"></i> Vacances</p>
+                            </div>
+                            <button id="btnProgVacances" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-sm transition">
+                                Programar
+                            </button>
+                        </div>
+                        <div id="vacActiveInfo" class="hidden mt-3 pt-3 border-t border-blue-200/50 dark:border-blue-800/50">
+                            <p class="text-[10px] text-blue-700 dark:text-blue-300 font-bold flex justify-between items-center">
+                                <span>Actiu fins al <span id="vacDataTornada" class="ml-1 text-slate-800 dark:text-white">--/--</span></span>
+                                <button id="btnCancelVacances" class="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-500 hover:text-white transition px-2 py-1 rounded-md font-black uppercase tracking-widest">
+                                    Aturar
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 mb-8">
+            
+            <section class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center">
+                    <i class="fas fa-chart-area text-blue-500 mr-2"></i> Evolució Tèrmica (Últimes 24H)
+                </h2>
+                <div class="w-full h-[280px]">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </section>
+
+            <section class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                        <i class="fas fa-bolt text-orange-500 mr-2"></i> Històric de Consum Temporal
+                    </h2>
+                    
+                    <div id="costPanel" class="hidden sm:flex items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                        <i class="fas fa-coins text-emerald-500 mr-2"></i>
+                        <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400">Cost aprox (30D temp): <span id="costEstimado" class="text-sm ml-1">0.00 €</span></span>
+                    </div>
+
+                    <div class="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl w-fit border border-slate-200 dark:border-slate-700">
+                        <button id="btnChart24h" class="px-5 py-2 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm transition">24 Hores (W)</button>
+                        <button id="btnChart30d" class="px-5 py-2 text-[11px] font-bold rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition">30 Dies (kWh)</button>
+                    </div>
+                </div>
+                
+                <div id="costPanelMobile" class="flex sm:hidden items-center bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800 mb-4 justify-center">
+                    <i class="fas fa-coins text-emerald-500 mr-2"></i>
+                    <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400">Cost aprox (30D temp): <span id="costEstimadoMobile" class="text-sm ml-1">0.00 €</span></span>
+                </div>
+
+                <div class="w-full h-[280px] relative">
+                    <canvas id="powerChart24h"></canvas>
+                    <canvas id="powerChart30d" class="hidden-canvas"></canvas>
+                </div>
+                <p class="text-[10px] text-center text-slate-400 mt-6 italic">Estimació simple sense peatges, potència contractada ni impostos.</p>
+            </section>
+        </div>
+
+        <section class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center">
+                <i class="fas fa-file-invoice-dollar text-emerald-500 mr-2"></i> Informe d'Estalvi i Facturació Acumulada
+            </h2>
+            <div class="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-700">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 dark:bg-slate-900">
+                        <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                            <th class="py-4 px-4">Període / Mes</th>
+                            <th class="py-4 px-4">Energia Consumida (kWh)</th>
+                            <th class="py-4 px-4 text-right">Cost Real (€)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="billingTableBody" class="text-sm font-medium text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-slate-700/50">
+                        <tr>
+                            <td colspan="3" class="py-6 text-center text-slate-400 italic text-xs">Carregant dades del servidor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-4 italic"><i class="fas fa-database text-slate-300 dark:text-slate-600 mr-1"></i> Aquestes dades es guarden de forma permanent a la memòria de Homey (Base de dades JSON).</p>
+        </section>
+
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-3"></div>
+
+    <script>
+        const FUNCTION_URL = '/.netlify/functions/homey';
+        const DEFAULT_SCRIPT_NAME = 'Control termo 100L V3.0.js';
+        const PRICE_PER_KWH = 0.115;
+
+        let config = JSON.parse(localStorage.getItem('homeyUiConfig')) || { scriptName: DEFAULT_SCRIPT_NAME, pin: '' };
+        let chartTemp, chartPow24h, chartPow30d;
+        let editingSchedules = [];
+        let homeyVariablesCache = [];
+        let isLoading = false;
+        let lastSuccessfulReadTs = null;
+
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const htmlElement = document.documentElement;
+
+        function updateThemeIcon(isDark) {
+            themeIcon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+            if (chartTemp) updateChartsColors();
+        }
+
+        if (localStorage.theme === 'light') {
+            htmlElement.classList.remove('dark');
+            htmlElement.classList.add('light');
+            updateThemeIcon(false);
+        } else {
+            htmlElement.classList.add('dark');
+            htmlElement.classList.remove('light');
+            updateThemeIcon(true);
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            if (htmlElement.classList.contains('dark')) {
+                htmlElement.classList.remove('dark');
+                htmlElement.classList.add('light');
+                localStorage.theme = 'light';
+                updateThemeIcon(false);
+            } else {
+                htmlElement.classList.add('dark');
+                htmlElement.classList.remove('light');
+                localStorage.theme = 'dark';
+                updateThemeIcon(true);
+            }
+        });
+
+        let tempHistory = JSON.parse(localStorage.getItem('tempHistory_v3')) || [];
+        let powerHistory = JSON.parse(localStorage.getItem('powerHistory_v3')) || [];
+        let energyHistory = JSON.parse(localStorage.getItem('energyHistory_v3')) || {};
+        let lastPowerTime = parseInt(localStorage.getItem('lastPowerTime')) || Date.now();
+
+        function safeParseJSON(value, fallback) {
+            if (value == null) return fallback;
+            const s = String(value).trim();
+            if (!s) return fallback;
+            try { return JSON.parse(s); } catch { return fallback; }
+        }
+
+        function saveHistoryData(tempAgua, tempExt, power) {
+            const now = Date.now();
+            const MAX_24H = 24 * 60 * 60 * 1000;
+
+            tempHistory = tempHistory.filter(p => now - p.t < MAX_24H);
+            if (tempHistory.length === 0 || (now - tempHistory[tempHistory.length - 1].t) > 5 * 60 * 1000) {
+                tempHistory.push({ t: now, y: tempAgua, ext: tempExt });
+            } else {
+                tempHistory[tempHistory.length - 1] = { t: now, y: tempAgua, ext: tempExt };
+            }
+            localStorage.setItem('tempHistory_v3', JSON.stringify(tempHistory));
+
+            powerHistory = powerHistory.filter(p => now - p.t < MAX_24H);
+            if (powerHistory.length === 0 || (now - powerHistory[powerHistory.length - 1].t) > 5 * 60 * 1000) {
+                powerHistory.push({ t: now, y: power });
+            } else {
+                powerHistory[powerHistory.length - 1] = { t: now, y: power };
+            }
+            localStorage.setItem('powerHistory_v3', JSON.stringify(powerHistory));
+
+            let hoursElapsed = (now - lastPowerTime) / 3600000;
+            if (hoursElapsed > 0 && hoursElapsed < 24) {
+                let energyKwh = (power / 1000) * hoursElapsed;
+                let d = new Date();
+                let todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                energyHistory[todayKey] = (energyHistory[todayKey] || 0) + energyKwh;
+                const daysKeys = Object.keys(energyHistory).sort();
+                if (daysKeys.length > 30) delete energyHistory[daysKeys[0]];
+                localStorage.setItem('energyHistory_v3', JSON.stringify(energyHistory));
+            }
+            lastPowerTime = now;
+            localStorage.setItem('lastPowerTime', now);
+
+            updateCharts();
+            updateCostEstimado();
+        }
+
+        function updateCostEstimado() {
+            let totalKwh = 0;
+            Object.values(energyHistory).forEach(kwh => totalKwh += kwh);
+            const cost = (totalKwh * PRICE_PER_KWH).toFixed(2);
+            document.getElementById('costEstimado').textContent = `${cost} €`;
+            document.getElementById('costEstimadoMobile').textContent = `${cost} €`;
+        }
+
+        function setConnectionStatus(type, text) {
+            const el = document.getElementById('connectionStatus');
+            if (type === 'loading') {
+                el.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="text-blue-600 text-xs uppercase tracking-wider font-bold">${text}</span>`;
+            } else if (type === 'ok') {
+                el.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span><span class="text-emerald-600 dark:text-emerald-400 text-xs uppercase tracking-wider font-bold">${text}</span>`;
+            } else {
+                el.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-red-600 dark:text-red-400 text-xs uppercase tracking-wider font-bold">${text}</span>`;
+            }
+        }
+
+        function updateLastReadStamp() {
+            const el = document.getElementById('lastUpdateText');
+            if (!lastSuccessfulReadTs) {
+                el.textContent = 'Última lectura: --';
+                return;
+            }
+            const d = new Date(lastSuccessfulReadTs);
+            el.textContent = `Última lectura: ${d.toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+        }
+
+        // --- NOVA FUNCIÓ CALLBACKEND QUE ATRAPA TOTS ELS ERRORS EN BRUT ---
+        async function callBackend(payload, timeout = 8000) {
+            payload.pin = config.pin || '';
+
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeout);
+            try {
+                const res = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+
+                // Llegim la resposta EXACTA de Netlify (sigui el que sigui)
+                const rawText = await res.text();
+
+                // Si Netlify ens envia un missatge buit, mostrem l'error HTTP real
+                if (!rawText || rawText.trim() === '') {
+                    throw new Error(`El servidor ha fallat i ha retornat una resposta buida. Codi HTTP: ${res.status} (${res.statusText})`);
+                }
+
+                // Intentem convertir-ho a JSON
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (e) {
+                    throw new Error(`Netlify ha retornat brossa (Codi ${res.status}): ${rawText.substring(0, 80)}...`);
+                }
+
+                // Mirem si l'script ens diu que hi ha hagut un error controlat
+                if (!res.ok || data?.ok === false) {
+                    throw new Error(data?.error || `Error intern ${res.status}`);
+                }
+                
+                return data;
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+        // ------------------------------------------------------------------
+
+        function showToast(msg, type = 'info', duration = 4000) {
+            const colors = { success: 'bg-emerald-500 border-emerald-600', error: 'bg-red-500 border-red-600', info: 'bg-blue-600 border-blue-700' };
+            const icons = { success: 'fa-check-circle', error: 'fa-triangle-exclamation', info: 'fa-info-circle' };
+            const t = document.createElement('div');
+            t.className = `${colors[type]} text-white px-5 py-4 rounded-xl shadow-2xl border-b-4 flex items-center gap-4 animate-slide-in min-w-[280px]`;
+            t.innerHTML = `<i class="fas ${icons[type]} text-xl flex-shrink-0"></i> <span class="font-medium tracking-wide">${msg}</span>`;
+            document.getElementById('toastContainer').appendChild(t);
+            setTimeout(() => {
+                t.style.opacity = '0';
+                setTimeout(() => t.remove(), 300);
+            }, duration);
+        }
+
+        function getGridColor() { return document.documentElement.classList.contains('dark') ? '#334155' : '#f1f5f9'; }
+        function getTextColor() { return document.documentElement.classList.contains('dark') ? '#94a3b8' : '#64748b'; }
+
+        function initCharts() {
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            const gridColor = getGridColor();
+            const textColor = getTextColor();
+
+            chartTemp = new Chart(document.getElementById('tempChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    datasets: [
+                        { label: 'Aigua (°C)', data: [], borderColor: '#3B82F6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, pointRadius: 0, fill: true, tension: 0.4, yAxisID: 'y' },
+                        { label: 'Exterior (°C)', data: [], borderColor: '#38bdf8', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, tension: 0.4, yAxisID: 'yExt' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: textColor } }, tooltip: { mode: 'index', intersect: false } },
+                    scales: {
+                        y: { min: 20, max: 75, grid: { borderDash: [5, 5], color: gridColor }, ticks: { color: textColor } },
+                        yExt: { position: 'right', min: 0, max: 40, grid: { display: false }, ticks: { color: textColor } },
+                        x: { grid: { display: false }, ticks: { maxTicksLimit: 12, color: textColor } }
+                    }
+                }
+            });
+
+            chartPow24h = new Chart(document.getElementById('powerChart24h').getContext('2d'), {
+                type: 'line',
+                data: { datasets: [{ label: 'Consum (W)', data: [], borderColor: '#F97316', backgroundColor: 'rgba(249, 115, 22, 0.1)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.2, stepped: true }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                    scales: {
+                        y: { min: 0, suggestedMax: 2200, grid: { borderDash: [5, 5], color: gridColor }, ticks: { color: textColor } },
+                        x: { grid: { display: false }, ticks: { maxTicksLimit: 12, color: textColor } }
+                    }
+                }
+            });
+
+            chartPow30d = new Chart(document.getElementById('powerChart30d').getContext('2d'), {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Energia (kWh)', data: [], backgroundColor: '#F97316', hoverBackgroundColor: '#ea580c', borderRadius: 4 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { borderDash: [5, 5], color: gridColor }, ticks: { color: textColor } },
+                        x: { grid: { display: false }, ticks: { color: textColor } }
+                    }
+                }
+            });
+        }
+
+        function updateChartsColors() {
+            const gridColor = getGridColor();
+            const textColor = getTextColor();
+            [chartTemp, chartPow24h, chartPow30d].forEach(c => {
+                if (!c) return;
+                if (c.options.plugins.legend) c.options.plugins.legend.labels.color = textColor;
+                c.options.scales.x.ticks.color = textColor;
+                c.options.scales.y.ticks.color = textColor;
+                c.options.scales.y.grid.color = gridColor;
+            });
+            if (chartTemp?.options?.scales?.yExt) chartTemp.options.scales.yExt.ticks.color = textColor;
+            chartTemp?.update('none');
+            chartPow24h?.update('none');
+            chartPow30d?.update('none');
+        }
+
+        function updateCharts() {
+            if (!chartTemp) return;
+            const labels24h = tempHistory.map(p => new Date(p.t).toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' }));
+            chartTemp.data.labels = labels24h;
+            chartTemp.data.datasets[0].data = tempHistory.map(p => p.y);
+            chartTemp.data.datasets[1].data = tempHistory.map(p => p.ext !== undefined ? p.ext : null);
+            chartTemp.update('none');
+
+            chartPow24h.data.labels = powerHistory.map(p => new Date(p.t).toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' }));
+            chartPow24h.data.datasets[0].data = powerHistory.map(p => p.y);
+            chartPow24h.update('none');
+
+            const keys = Object.keys(energyHistory).sort();
+            chartPow30d.data.labels = keys.map(k => {
+                const [y, m, d] = k.split('-');
+                return `${d}/${m}`;
+            });
+            chartPow30d.data.datasets[0].data = keys.map(k => Number(energyHistory[k]).toFixed(2));
+            chartPow30d.update('none');
+        }
+
+        function updateBillingTable(vars) {
+            const logStr = vars.find(v => v.name === 'Termo_Log_Consumo')?.value;
+            const tableBody = document.getElementById('billingTableBody');
+
+            if (!logStr || String(logStr).trim() === '' || logStr === '{}') {
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-6 px-4 text-center text-slate-500 italic text-sm">Esperant la primera lectura de la base de dades...</td></tr>';
+                return;
+            }
+
+            try {
+                const history = safeParseJSON(logStr, {});
+                let html = '';
+                const keys = Object.keys(history).sort().reverse();
+
+                keys.forEach(key => {
+                    const kwh = Number(history[key] || 0);
+                    const cost = (kwh * PRICE_PER_KWH).toFixed(2);
+                    const isYear = key.startsWith('Anual');
+
+                    if (isYear) {
+                        html += `
+                        <tr class="bg-blue-50/50 dark:bg-blue-900/10 font-bold border-b-2 border-blue-100 dark:border-blue-900/30">
+                            <td class="py-4 px-4 flex items-center text-blue-700 dark:text-blue-400"><i class="fas fa-calendar text-blue-400 mr-2"></i> TOTAL ${key.replace('Anual_', '')}</td>
+                            <td class="py-4 px-4 text-blue-800 dark:text-blue-300">${kwh.toFixed(2)} kWh</td>
+                            <td class="py-4 px-4 text-right text-emerald-600 dark:text-emerald-400 text-lg">${cost} €</td>
+                        </tr>`;
+                    } else {
+                        const [year, month] = key.split('-');
+                        const monthNames = ["Gener", "Febrer", "Març", "Abril", "Maig", "Juny", "Juliol", "Agost", "Setembre", "Octubre", "Novembre", "Desembre"];
+                        const monthName = monthNames[parseInt(month) - 1] || month;
+
+                        html += `
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                            <td class="py-3 px-4">${monthName} ${year}</td>
+                            <td class="py-3 px-4">${kwh.toFixed(2)} kWh</td>
+                            <td class="py-3 px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400">${cost} €</td>
+                        </tr>`;
+                    }
+                });
+                tableBody.innerHTML = html || '<tr><td colspan="3" class="py-6 px-4 text-center text-slate-500 italic text-sm">Sense dades encara.</td></tr>';
+            } catch (e) {
+                console.error("Error processant la taula de facturació", e);
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-4 px-4 text-center text-red-500 font-bold">Error llegint l\'historial JSON</td></tr>';
+            }
+        }
+
+        function updateAgenda(horarisFixos, rutinesIA) {
+            const today = new Date().getDay();
+            const currentMin = new Date().getHours() * 60 + new Date().getMinutes();
+            let eventsAvui = [];
+
+            if (horarisFixos && horarisFixos.length > 0) {
+                horarisFixos.forEach(h => {
+                    if (h.dies && h.dies.includes(today)) {
+                        eventsAvui.push({ tipus: 'fix', h: h.h, m: h.m, nom: 'Dutxa Programada' });
+                    }
+                });
+            }
+
+            if (rutinesIA && rutinesIA.length > 0) {
+                rutinesIA.forEach(horaIA => {
+                    eventsAvui.push({ tipus: 'ia', h: horaIA, m: 0, nom: 'Rutina Apresa (Precalentament)' });
+                });
+            }
+
+            eventsAvui.sort((a, b) => (a.h * 60 + a.m) - (b.h * 60 + b.m));
+
+            const agendaDiv = document.getElementById('agendaAvuiList');
+            if (eventsAvui.length === 0) {
+                agendaDiv.innerHTML = '<div class="text-center text-slate-400 text-sm mt-8 italic">No hi ha cap escalfament programat per avui.</div>';
+            } else {
+                let html = '';
+                eventsAvui.forEach(ev => {
+                    const passat = (ev.h * 60 + ev.m) < currentMin;
+                    const formatTime = `${String(ev.h).padStart(2, '0')}:${String(ev.m).padStart(2, '0')}`;
+                    const colorClass = ev.tipus === 'ia'
+                        ? (passat ? 'bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800/30 opacity-50' : 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700')
+                        : (passat ? 'bg-slate-50 dark:bg-slate-900/30 border-slate-100 dark:border-slate-800 opacity-50' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800');
+                    const textClass = ev.tipus === 'ia' ? 'text-purple-700 dark:text-purple-300' : 'text-blue-700 dark:text-blue-300';
+                    const icon = ev.tipus === 'ia' ? '<i class="fas fa-brain"></i>' : '<i class="fas fa-shower"></i>';
+
+                    html += `
+                    <div class="flex items-center gap-3 p-3 rounded-xl border transition mb-3 ${colorClass}">
+                        <div class="font-black text-lg ${textClass} shrink-0 w-14 text-center">${formatTime}</div>
+                        <div class="flex-1 flex justify-between items-center">
+                            <div>
+                                <p class="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">${icon} ${ev.nom}</p>
+                                ${passat ? '<p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-0.5">Ja realitzat</p>' : ''}
+                            </div>
+                            ${ev.tipus === 'ia' ? `<button onclick="deleteIARoutine(${ev.h})" title="Esborrar Rutina" class="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-2 rounded-lg transition"><i class="fas fa-trash"></i></button>` : ''}
+                        </div>
+                    </div>`;
+                });
+                agendaDiv.innerHTML = html;
+            }
+
+            let seguent = eventsAvui.find(ev => (ev.h * 60 + ev.m) > currentMin);
+            let textAccio = "Avui no n'hi ha cap més";
+            if (seguent) {
+                textAccio = `${seguent.nom} a les ${String(seguent.h).padStart(2, '0')}:${String(seguent.m).padStart(2, '0')}h`;
+            }
+            document.getElementById('txtProximaAccio').textContent = textAccio;
+        }
+
+        window.deleteIARoutine = async function(hour) {
+            if (!confirm(`N'estàs segur? Vols que la IA oblidi la rutina apresa a les ${hour}:00h?`)) return;
+            showToast(`Esborrant la rutina de les ${hour}:00h...`, 'info');
+
+            try {
+                await callBackend({
+                    action: 'deleteIaRoutine',
+                    hour,
+                    scriptName: config.scriptName || DEFAULT_SCRIPT_NAME
+                });
+                showToast(`Rutina IA esborrada correctament!`, 'success');
+                setTimeout(loadAllData, 1200);
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        }
+
+        function renderModalSchedules() {
+            const listContainer = document.getElementById('horarisEditorList');
+            let html = '';
+
+            if (!editingSchedules || editingSchedules.length === 0) {
+                html = '<div class="text-center text-slate-400 italic py-4">No hi ha cap horari configurat.</div>';
+            } else {
+                editingSchedules.forEach((h, index) => {
+                    html += `
+                    <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="flex flex-col w-20 shrink-0">
+                            <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">Hora</span>
+                            <input type="time" id="edit-time-${index}" value="${String(h.h).padStart(2, '0')}:${String(h.m).padStart(2, '0')}" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm font-bold text-slate-800 dark:text-white outline-none">
+                        </div>
+                        <div class="flex-1 flex flex-col">
+                            <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">Quan?</span>
+                            <select id="edit-type-${index}" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm font-bold text-slate-800 dark:text-white outline-none">
+                                <option value="feiners" ${h.tipus === 'feiners' ? 'selected' : ''}>Dilluns a Divendres</option>
+                                <option value="cap" ${h.tipus === 'cap' ? 'selected' : ''}>Caps de Setmana</option>
+                                <option value="tots" ${h.tipus === 'tots' ? 'selected' : ''}>Tots els dies</option>
+                            </select>
+                        </div>
+                        <button onclick="removeSchedule(${index})" class="w-10 h-10 mt-4 shrink-0 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition flex items-center justify-center">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>`;
+                });
+            }
+            listContainer.innerHTML = html;
+        }
+
+        window.removeSchedule = function(index) {
+            saveCurrentInputsToVar();
+            editingSchedules.splice(index, 1);
+            renderModalSchedules();
+        }
+
+        document.getElementById('btnAddHorari').addEventListener('click', () => {
+            saveCurrentInputsToVar();
+            if (!Array.isArray(editingSchedules)) editingSchedules = [];
+            editingSchedules.push({ id: Date.now(), h: 8, m: 0, tipus: 'feiners', dies: [1,2,3,4,5] });
+            renderModalSchedules();
+        });
+
+        function saveCurrentInputsToVar() {
+            if (!Array.isArray(editingSchedules)) return;
+            editingSchedules.forEach((h, index) => {
+                const timeInput = document.getElementById(`edit-time-${index}`);
+                const typeInput = document.getElementById(`edit-type-${index}`);
+                if (timeInput && typeInput) {
+                    const [hour, min] = timeInput.value.split(':');
+                    h.h = parseInt(hour);
+                    h.m = parseInt(min);
+                    h.tipus = typeInput.value;
+                    if (h.tipus === 'feiners') h.dies = [1,2,3,4,5];
+                    else if (h.tipus === 'cap') h.dies = [0,6];
+                    else h.dies = [0,1,2,3,4,5,6];
+                }
+            });
+        }
+
+        function updateVacancesUI(vacData) {
+            const info = document.getElementById('vacActiveInfo');
+            const dataT = document.getElementById('vacDataTornada');
+
+            if (vacData && vacData.fi) {
+                info.classList.remove('hidden');
+                const d = new Date(vacData.fi);
+                const formatData = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} a les ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}h`;
+                dataT.textContent = formatData;
+
+                document.getElementById('vacancesBox').classList.remove('bg-blue-50/50', 'dark:bg-blue-900/20');
+                document.getElementById('vacancesBox').classList.add('bg-orange-50/50', 'dark:bg-orange-900/20', 'border-orange-200', 'dark:border-orange-800');
+            } else {
+                info.classList.add('hidden');
+                document.getElementById('vacancesBox').classList.add('bg-blue-50/50', 'dark:bg-blue-900/20');
+                document.getElementById('vacancesBox').classList.remove('bg-orange-50/50', 'dark:bg-orange-900/20', 'border-orange-200', 'dark:border-orange-800');
+            }
+        }
+
+        async function setLogicVariable(name, value, showSuccess = true) {
+            try {
+                await callBackend({ action: 'setVariable', name, value });
+                if (showSuccess) showToast(`${name} actualitzat.`, 'success');
+                setTimeout(loadAllData, 700);
+                return true;
+            } catch (e) {
+                showToast(`Error al modificar ${name}: ${e.message}`, 'error');
+                return false;
+            }
+        }
+
+        function updateAlarmStatus(vars, data) {
+            const pnl = document.getElementById('alarmPanel');
+            const icn = document.getElementById('alarmIcon');
+            const tit = document.getElementById('alarmTitle');
+            const txt = document.getElementById('alarmText');
+
+            const err800 = vars.find(v => v.name === 'Termo_Avaria_800W')?.value === true;
+            const err1200 = vars.find(v => v.name === 'Termo_Avaria_1200W')?.value === true;
+            const watchdogAlert = !!data?.watchdogAlert;
+            const mode = data?.mode || '';
+
+            pnl.classList.remove('hidden');
+
+            if (err800 && err1200) {
+                pnl.className = "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-3xl p-5 mb-8 flex items-center gap-4 opacity-100";
+                icn.className = "w-12 h-12 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center text-xl shrink-0 animate-pulse";
+                icn.innerHTML = '<i class="fas fa-skull-crossbones"></i>';
+                tit.className = "font-bold text-red-800 dark:text-red-300";
+                tit.innerText = "FALLADA TOTAL (Màxima Alerta)";
+                txt.className = "text-sm text-red-600 dark:text-red-400 mt-1";
+                txt.innerText = "Sistema aturat completament per seguretat elèctrica.";
+            } else if (watchdogAlert) {
+                pnl.className = "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-3xl p-5 mb-8 flex items-center gap-4 opacity-100";
+                icn.className = "w-12 h-12 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center text-xl shrink-0 animate-pulse";
+                icn.innerHTML = '<i class="fas fa-fire-extinguisher"></i>';
+                tit.className = "font-bold text-red-800 dark:text-red-300";
+                tit.innerText = "ALERTA: ESCALFAMENT ESTANCAT";
+                txt.className = "text-sm text-red-600 dark:text-red-400 mt-1";
+                txt.innerText = "La resistència porta massa estona encesa sense pujar prou la temperatura.";
+            } else if (err800 || err1200) {
+                const av = err800 ? '800W' : '1200W';
+                pnl.className = "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-900/50 rounded-3xl p-5 mb-8 flex items-center gap-4 opacity-100";
+                icn.className = "w-12 h-12 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded-full flex items-center justify-center text-xl shrink-0 animate-pulse";
+                icn.innerHTML = '<i class="fas fa-tools"></i>';
+                tit.className = "font-bold text-orange-800 dark:text-orange-300";
+                tit.innerText = `AVARIA EN RESISTÈNCIA ${av}`;
+                txt.className = "text-sm text-orange-700 dark:text-orange-400 mt-1";
+                txt.innerText = "El sistema ha aïllat la resistència i continua funcionant amb la restant.";
+            } else if (['PARADA_EMERGENCIA', 'SOBREESCALFAMENT', 'SENSOR_CORRUPTE', 'AVARIA_TOTAL'].includes(mode)) {
+                pnl.className = "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-3xl p-5 mb-8 flex items-center gap-4 opacity-100";
+                icn.className = "w-12 h-12 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center text-xl shrink-0";
+                icn.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+                tit.className = "font-bold text-red-800 dark:text-red-300";
+                tit.innerText = mode.replace(/_/g, ' ');
+                txt.className = "text-sm text-red-700 dark:text-red-400 mt-1";
+                txt.innerText = "El mode actual indica un estat de protecció o error crític.";
+            } else {
+                pnl.classList.add('hidden');
+            }
+        }
+
+        function updateDiagnostics(data) {
+            const diag = data?.diagnostics || {};
+            
+            const elBaseRaw = document.getElementById('diagBaseLoadRaw');
+            if(elBaseRaw) elBaseRaw.textContent = `${Math.round(diag.base_load_raw ?? diag.base_load ?? 0)} W`;
+            
+            const elBaseAvg = document.getElementById('diagBaseLoadAvg');
+            if(elBaseAvg) elBaseAvg.textContent = `${Math.round(diag.base_load_avg ?? 0)} W`;
+            
+            const elPotDemand = document.getElementById('diagPotenciaDemandada');
+            if(elPotDemand) elPotDemand.textContent = `${Math.round(diag.potencia_calculada_demandada ?? 0)} W`;
+            
+            const diagBloqueigs = document.getElementById('diagBloqueigs');
+            if (diagBloqueigs) {
+                let bloqueigsHtml = '';
+                if (diag.bloqueig_per_consum_massa_alt) {
+                    bloqueigsHtml += `<span class="px-2 py-1 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-[9px] font-bold rounded-md">Consum</span>`;
+                }
+                if (diag.bloqueig_per_temporitzador_5min) {
+                    bloqueigsHtml += `<span class="px-2 py-1 bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 text-[9px] font-bold rounded-md">5 min</span>`;
+                }
+                if (bloqueigsHtml === '') {
+                    bloqueigsHtml = `<span class="text-xs text-slate-400">Cap</span>`;
+                }
+                diagBloqueigs.innerHTML = bloqueigsHtml;
+            }
+        }
+
+        async function loadAllData() {
+            if (isLoading) return;
+            isLoading = true;
+            setConnectionStatus('loading', 'Llegint...');
+
+            try {
+                const response = await callBackend({
+                    action: 'status',
+                    scriptName: config.scriptName || DEFAULT_SCRIPT_NAME
+                });
+
+                const data = response.script;
+                const vars = response.vars || [];
+                homeyVariablesCache = vars;
+
+                if (data && data.tempAgua !== undefined) {
+                    const tAgua = Number(data.tempAgua);
+                    const tExt = Number(data.tempExterior || 0);
+                    const elTempAgua = document.getElementById('tempAgua');
+                    const bgGlow = document.getElementById('bgGlow');
+
+                    elTempAgua.textContent = tAgua.toFixed(1);
+
+                    if (tAgua < 35) {
+                        elTempAgua.className = "text-8xl sm:text-[7rem] font-black tracking-tighter leading-none text-blue-500 dark:text-blue-400 transition-colors duration-500";
+                        bgGlow.className = "absolute top-0 right-0 w-64 h-64 bg-blue-400 dark:bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-20 transform translate-x-1/2 -translate-y-1/2 transition-colors duration-1000";
+                    } else if (tAgua < 55) {
+                        elTempAgua.className = "text-8xl sm:text-[7rem] font-black tracking-tighter leading-none text-orange-500 dark:text-orange-400 transition-colors duration-500";
+                        bgGlow.className = "absolute top-0 right-0 w-64 h-64 bg-orange-400 dark:bg-orange-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-20 transform translate-x-1/2 -translate-y-1/2 transition-colors duration-1000";
+                    } else {
+                        elTempAgua.className = "text-8xl sm:text-[7rem] font-black tracking-tighter leading-none text-red-500 dark:text-red-400 transition-colors duration-500";
+                        bgGlow.className = "absolute top-0 right-0 w-64 h-64 bg-red-500 dark:bg-red-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-20 transform translate-x-1/2 -translate-y-1/2 transition-colors duration-1000";
+                    }
+
+                    document.getElementById('tempObjectiu').textContent = `${Number(data.tempObjectiu).toFixed(1)}°C`;
+                    document.getElementById('tempExterior').textContent = `${tExt.toFixed(1)}°C`;
+                    document.getElementById('consumActual').textContent = `${Math.round(data.consumActual || 0)} W`;
+
+                    if (data.taxaRefredat !== null && data.taxaRefredat !== undefined) {
+                        document.getElementById('txtTaxaRefredat').textContent = `Pèrdua: ${data.taxaRefredat} °C/h`;
+                    } else {
+                        document.getElementById('txtTaxaRefredat').textContent = `Pèrdua: Calculant...`;
+                    }
+
+                    let modeName = (data.mode || '--').replace(/_/g, ' ');
+                    const elMode = document.getElementById('modeActual');
+
+                    if (['PARADA_EMERGENCIA', 'SOBREESCALFAMENT', 'SENSOR_CORRUPTE', 'AVARIA_TOTAL'].includes(data.mode)) {
+                        elMode.textContent = modeName;
+                        elMode.className = "px-3 py-1 rounded-lg text-[11px] font-bold bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 shadow-sm border border-red-200 dark:border-red-800 uppercase tracking-wider glow-red";
+                    } else if (data.mode === 'PREDICCIO_REFREDAT') {
+                        elMode.innerHTML = `<i class="fas fa-snowflake text-cyan-500 mr-1"></i> PREVENCIÓ FRED`;
+                        elMode.className = "px-3 py-1 rounded-lg text-[11px] font-bold bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 shadow-sm border border-cyan-200 dark:border-cyan-800 uppercase tracking-wider glow-cyan";
+                    } else if (data.mode === 'IA_CONFORT' || data.mode === 'IA_PRECALENTAMENT') {
+                        elMode.innerHTML = `<i class="fas fa-sparkles text-purple-500 mr-1"></i> IA ACTIVA`;
+                        elMode.className = "px-3 py-1 rounded-lg text-[11px] font-bold bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm border border-purple-200 dark:border-purple-800 uppercase tracking-wider glow-purple";
+                    } else if (['CONFORT', 'PRECALENTAMENT', 'RETORN_VACANCES', 'DUTXA_URGENT', 'ANTI_LEGIONELLA'].includes(data.mode)) {
+                        elMode.textContent = modeName;
+                        elMode.className = "px-3 py-1 rounded-lg text-[11px] font-bold bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 shadow-sm border border-orange-200 dark:border-orange-800 uppercase tracking-wider glow-orange";
+                    } else {
+                        elMode.textContent = modeName;
+                        elMode.className = "px-3 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-600 uppercase tracking-wider";
+                    }
+
+                    const delta = data.tempObjectiu - tAgua;
+                    const di = document.getElementById('deltaIndicator');
+                    if (String(data.mode || '').includes('EMERGENCIA') || String(data.mode || '').includes('CORRUPTE') || String(data.mode || '').includes('AVARIA')) {
+                        di.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block mr-1"></span> Aturat';
+                        di.className = 'text-[10px] font-bold px-3 py-1 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 uppercase tracking-widest border border-red-100 dark:border-red-800';
+                    } else if (data.consumActual > 0) {
+                        di.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block mr-1"></span> Escalfant';
+                        di.className = 'text-[10px] font-bold px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 uppercase tracking-widest border border-orange-100 dark:border-orange-800';
+                    } else if (delta > 0 && data.consumActual === 0) {
+                        di.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block mr-1"></span> En Espera';
+                        di.className = 'text-[10px] font-bold px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-500 dark:text-blue-400 uppercase tracking-widest border border-blue-100 dark:border-blue-800';
+                    } else {
+                        di.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block mr-1"></span> Conservant';
+                        di.className = 'text-[10px] font-bold px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 uppercase tracking-widest border border-emerald-100 dark:border-emerald-800';
+                    }
+
+                    document.getElementById('tempProgress').style.width = `${Math.min(100, Math.max(0, (tAgua / 80) * 100))}%`;
+                    document.getElementById('tempProgress').className = `h-full rounded-full transition-all duration-1000 relative overflow-hidden ${tAgua < 40 ? 'bg-blue-500' : tAgua < 60 ? 'bg-orange-500' : 'bg-red-500'}`;
+
+                    saveHistoryData(tAgua, tExt, data.consumActual);
+                    updateAgenda(data.horaris || [], data.rutinesIA || []);
+                    updateVacancesUI(data.vacances || { inici: null, fi: null });
+                    
+                    updateDiagnostics(data);
+                    
+                    updateAlarmStatus(vars, data);
+                    updateBillingTable(vars);
+
+                    const legio = vars.find(v => v.name === 'UltimCicleLegionella')?.value;
+                    const txtLegio = document.getElementById('txtLegionella');
+                    if (legio && legio !== '' && legio !== 0 && legio !== '0' && String(legio).toLowerCase() !== 'never') {
+                        const legioDate = new Date(legio);
+                        if (!isNaN(legioDate.getTime())) {
+                            txtLegio.innerText = `${legioDate.toLocaleDateString('ca-ES')} a les ${legioDate.toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' })}`;
+                        } else {
+                            txtLegio.innerText = "Data pendent";
+                        }
+                    } else {
+                        txtLegio.innerText = "Sense dades registrades";
+                    }
+
+                    const err800 = vars.find(v => v.name === 'Termo_Avaria_800W')?.value === true;
+                    const err1200 = vars.find(v => v.name === 'Termo_Avaria_1200W')?.value === true;
+                    const led800 = document.getElementById('led-800');
+                    const led1200 = document.getElementById('led-1200');
+
+                    if (err800) led800.className = 'px-2 py-0.5 text-[9px] font-bold rounded-md bg-red-500 text-white glow-red transition-all duration-300';
+                    else if (data && data.resistencia800 && data.resistencia800.on) led800.className = 'px-2 py-0.5 text-[9px] font-bold rounded-md bg-orange-500 text-white glow-orange transition-all duration-300';
+                    else led800.className = 'px-2 py-0.5 text-[9px] font-bold rounded-md bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 transition-all duration-300 border border-slate-200 dark:border-slate-600';
+
+                    if (err1200) led1200.className = 'px-2 py-0.5 text-[9px] font-bold rounded-md bg-red-500 text-white glow-red transition-all duration-300';
+                    else if (data && data.resistencia1200 && data.resistencia1200.on) led1200.className = 'px-2 py-0.5 text-[9px] font-bold rounded-md bg-orange-500 text-white glow-orange transition-all duration-300';
+                    else led1200.className = 'px-2 py-0.5 text-[9px] font-bold rounded-md bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 transition-all duration-300 border border-slate-200 dark:border-slate-600';
+
+                    // ACTUALITZACIÓ INTERRUPTORS MANUALS
+                    document.getElementById('toggleBoost').checked = vars.find(v => v.name === 'DutxaUrgent')?.value === true;
+                    document.getElementById('toggleEmergencia').checked = vars.find(v => v.name === 'ParadaEmergencia')?.value === true;
+                    document.getElementById('toggleLegionella').checked = data.legionellaProgramada === true;
+
+                    const urgentBadge = document.getElementById('urgentTimerBadge');
+                    if (data.mode === 'DUTXA_URGENT' && data.minutsRestantsUrgent !== null && data.minutsRestantsUrgent !== undefined) {
+                        urgentBadge.classList.remove('hidden');
+                        urgentBadge.classList.add('flex');
+
+                        if (data.minutsRestantsUrgent > 0) {
+                            urgentBadge.className = "flex mt-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 text-[11px] font-bold rounded-lg border border-orange-200 dark:border-orange-800 w-fit items-center gap-1 transition-all";
+                            document.getElementById('urgentTimerText').innerHTML = `Dutxa en <b>~${data.minutsRestantsUrgent} min</b> (43ºC)`;
+                            urgentBadge.querySelector('i').className = "fas fa-stopwatch animate-pulse";
+                        } else {
+                            urgentBadge.className = "flex mt-2 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold rounded-lg border border-emerald-200 dark:border-emerald-800 w-fit items-center gap-1 transition-all glow-orange";
+                            document.getElementById('urgentTimerText').innerHTML = `<b>Dutxa llesta! 🚿</b> (>= 43ºC)`;
+                            urgentBadge.querySelector('i').className = "fas fa-check-circle";
+                        }
+                    } else {
+                        urgentBadge.classList.remove('flex');
+                        urgentBadge.classList.add('hidden');
+                    }
+
+                    lastSuccessfulReadTs = Date.now();
+                    updateLastReadStamp();
+                    setConnectionStatus('ok', 'Connectat');
+                } else {
+                    throw new Error('Resposta del backend sense dades vàlides');
+                }
+            } catch (err) {
+                console.error(err);
+                setConnectionStatus('error', 'Error');
+                showToast(`Error de lectura: ${err.message}`, 'error', 5000);
+                
+                if (err.message.includes('PIN')) {
+                    document.getElementById('configModal').classList.remove('hidden');
+                }
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        document.getElementById('btnChart24h').addEventListener('click', (e) => {
+            document.getElementById('powerChart24h').classList.remove('hidden-canvas');
+            document.getElementById('powerChart30d').classList.add('hidden-canvas');
+            e.target.className = "px-5 py-2 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm transition";
+            document.getElementById('btnChart30d').className = "px-5 py-2 text-[11px] font-bold rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition";
+        });
+
+        document.getElementById('btnChart30d').addEventListener('click', (e) => {
+            document.getElementById('powerChart30d').classList.remove('hidden-canvas');
+            document.getElementById('powerChart24h').classList.add('hidden-canvas');
+            e.target.className = "px-5 py-2 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm transition";
+            document.getElementById('btnChart24h').className = "px-5 py-2 text-[11px] font-bold rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition";
+        });
+
+        document.getElementById('toggleBoost').addEventListener('change', (e) => setLogicVariable('DutxaUrgent', e.target.checked, false));
+
+        document.getElementById('toggleEmergencia').addEventListener('change', async (e) => {
+            const isChecked = e.target.checked;
+            if (isChecked) {
+                if (!confirm("⚠️ ATENCIÓ: Estàs a punt d'aturar completament el termo. Això bloquejarà qualsevol escalfament programat, rutines i cicles sanitaris fins que ho tornis a desactivar manualment. N'estàs segur?")) {
+                    e.target.checked = false;
+                    return;
+                }
+            }
+            await setLogicVariable('ParadaEmergencia', isChecked);
+        });
+
+        // ESDEVENIMENT: BOTÓ LEGIONEL·LA FORÇADA
+        document.getElementById('toggleLegionella').addEventListener('change', async (e) => {
+            const isChecked = e.target.checked;
+            if (isChecked) {
+                if (!confirm("Vols programar un xoc tèrmic fins als 70ºC per a aquesta propera matinada (de 03:00h a 06:00h)? El cicle només s'executarà una vegada.")) {
+                    e.target.checked = false;
+                    return;
+                }
+                try {
+                    await callBackend({ action: 'force_legionella', scriptName: config.scriptName || DEFAULT_SCRIPT_NAME });
+                    showToast("Xoc Anti-Legionel·la programat per aquesta nit.", "success");
+                    setTimeout(loadAllData, 1000);
+                } catch (err) {
+                    showToast("Error: " + err.message, "error");
+                    e.target.checked = false;
+                }
+            } else {
+                await setLogicVariable('LegionellaForcada', false);
+            }
+        });
+
+        document.getElementById('btnEditHoraris').addEventListener('click', async () => {
+            const btn = document.getElementById('btnEditHoraris');
+            const iconOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                const response = await callBackend({ action: 'status', scriptName: config.scriptName || DEFAULT_SCRIPT_NAME });
+                if (!response.ok || !response.vars) throw new Error("Error carregant variables");
+                
+                const varHoraris = response.vars.find(v => v.name === 'Termo_Horaris_JSON')?.value;
+                editingSchedules = safeParseJSON(varHoraris, []);
+                if (!Array.isArray(editingSchedules)) editingSchedules = [];
+
+                renderModalSchedules();
+                document.getElementById('horarisModal').classList.remove('hidden');
+            } catch (e) {
+                showToast("Error carregant el modal d'horaris.", "error");
+            } finally {
+                btn.innerHTML = iconOriginal;
+            }
+        });
+
+        document.getElementById('saveHorarisBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('saveHorarisBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            saveCurrentInputsToVar();
+            await setLogicVariable('Termo_Horaris_JSON', JSON.stringify(editingSchedules));
+            document.getElementById('horarisModal').classList.add('hidden');
+            btn.innerHTML = '<i class="fas fa-save"></i> Desar Canvis';
+        });
+
+        document.getElementById('btnProgVacances').addEventListener('click', () => {
+            document.getElementById('vacancesModal').classList.remove('hidden');
+        });
+
+        document.getElementById('saveVacBtn').addEventListener('click', async () => {
+            const inici = document.getElementById('vacInici').value;
+            const fi = document.getElementById('vacFi').value;
+
+            if (!inici || !fi) {
+                showToast("Has d'omplir les dues dates per programar les vacances.", "error");
+                return;
+            }
+
+            const btn = document.getElementById('saveVacBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            await setLogicVariable('Termo_Vacances_JSON', JSON.stringify({ inici, fi }));
+            document.getElementById('vacancesModal').classList.add('hidden');
+            btn.innerHTML = 'Activar Calendari';
+        });
+
+        document.getElementById('btnCancelVacances').addEventListener('click', async () => {
+            document.getElementById('btnCancelVacances').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            await setLogicVariable('Termo_Vacances_JSON', '');
+            document.getElementById('btnCancelVacances').innerHTML = 'Aturar';
+        });
+
+        document.getElementById('configBtn').addEventListener('click', () => {
+            document.getElementById('configScriptName').value = config.scriptName || DEFAULT_SCRIPT_NAME;
+            document.getElementById('configPin').value = config.pin || '';
+            document.getElementById('configModal').classList.remove('hidden');
+        });
+
+        document.getElementById('cancelConfigBtn').addEventListener('click', () => {
+            document.getElementById('configModal').classList.add('hidden');
+        });
+
+        document.getElementById('saveConfigBtn').addEventListener('click', () => {
+            const scriptName = document.getElementById('configScriptName').value.trim() || DEFAULT_SCRIPT_NAME;
+            const pin = document.getElementById('configPin').value.trim();
+            config.scriptName = scriptName;
+            config.pin = pin;
+            localStorage.setItem('homeyUiConfig', JSON.stringify(config));
+            document.getElementById('configModal').classList.add('hidden');
+            showToast('Configuració desada.', 'success');
+            loadAllData();
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', loadAllData);
+
+        setInterval(() => {
+            document.getElementById('currentTime').innerHTML = `<i class="far fa-clock"></i> ${new Date().toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' })}`;
+            updateLastReadStamp();
+        }, 1000);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateCostEstimado();
+            initCharts();
+            updateCharts();
+            updateLastReadStamp();
+            
+            if (!config.pin) {
+                document.getElementById('configModal').classList.remove('hidden');
+            } else {
+                loadAllData();
+                setInterval(loadAllData, 10000);
+            }
+        });
+    </script>
+</body>
+</html>
